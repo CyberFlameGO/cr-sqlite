@@ -7,6 +7,20 @@ import { SQLITE_UTF8 } from "wa-sqlite";
 
 let api: SQLite3 | null = null;
 
+// TODO: remember you need to serialize access for wa-sqlite.
+
+const queue = Promise.resolve();
+const serializer = {
+  serialize(op: () => Promise<any>) {
+    const res = queue.then(() => {
+      return tracer.genStartActiveSpan("connection.query", (span: Span) =>
+        this.#queryImpl(span, sql)
+      );
+    });
+    this.queue = res.catch(() => {});
+  },
+};
+
 export class SQLite3 {
   constructor(private base: SQLiteAPI) {}
 
